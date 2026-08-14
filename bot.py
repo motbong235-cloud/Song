@@ -56,11 +56,14 @@ def yt_search(query: str, limit: int = MAX_RESULTS) -> list[dict]:
         "no_warnings": True,
         "extract_flat": True,
         "skip_download": True,
-        "default_search": f"ytsearch{limit}",
+        # ប្រើ prefix ដោយផ្ទាល់ជំនួស default_search — ជៀសផុតបញ្ហាមួយចំនួនក្នុងកំណែ yt-dlp ថ្មីៗ
+        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
     }
+    search_query = f"ytsearch{limit}:{query}"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(query, download=False)
+        info = ydl.extract_info(search_query, download=False)
         entries = info.get("entries", []) if info else []
+        logger.info("yt_search('%s') → %d entries raw", query, len(entries))
 
     results = []
     for e in entries:
