@@ -39,6 +39,53 @@ python bot.py
 ```
 សម្រាប់ដំណើរការជាប់រហូត អាចប្រើ `pm2`, `screen`, ឬ `systemd service`។
 
+## ដោះស្រាយបញ្ហា "រកអត់ឃើញលទ្ធផលទាំងអស់"
+YouTube ផ្លាស់ប្តូរប្រព័ន្ធជាញឹកញាប់ ដែលធ្វើឲ្យកំណែ `yt-dlp` ចាស់លែងដំណើរការ។ ប្រសិនបើ search មិនដែលរកឃើញអ្វីសោះ សូមព្យាយាមតាមលំដាប់នេះ៖
+1. **Upgrade yt-dlp ជាមុនសិន** (មូលហេតុទូទៅបំផុត)៖
+   ```bash
+   pip install -U yt-dlp
+   ```
+2. ពិនិត្យ log terminal នៅពេល error កើតឡើង — bot.py បាន log ចំនួន entries ដែលរកឃើញឲ្យឃើញរាល់ពេល ដើម្បីជួយ debug
+3. ប្រសិនបើដំណើរការលើ VPS/Render ហើយនៅតែអត់ឃើញ អាចជាដោយ IP របស់ server ត្រូវ YouTube blocked — ព្យាយាមផ្លាស់ប្តូរ `player_client` ក្នុង `bot.py` (បច្ចុប្បន្នកំណត់ `["android", "web"]`) ឬបន្ថែម cookies ពី browser ដោយប្រើ `cookiefile` option
+4. ប្រសិនបើ error ជាក់លាក់លេចឡើងក្នុង Telegram message ខ្លួនឯង (ដូចជា `❌ ស្វែងរកមិនបានទេ៖ ...`) នោះជាសារ error ពិតប្រាកដពី yt-dlp — ចម្លងវាមកសួរបន្ថែមបាន
+
+## ដោះស្រាយ "Sign in to confirm you're not a bot"
+YouTube ចាប់ផ្តើម block ការស្នើសុំពី server (VPS/Render) ដែលមិនមាន cookies ចូល account។ មានវិធីពីរ៖
+
+### វិធីទី១ (ណែនាំ): PO Token Provider — មិនចាំបាច់ login account
+ប្រើ [bgutil-ytdlp-pot-provider](https://github.com/Brainicism/bgutil-ytdlp-pot-provider) ជា server ដាច់ដោយឡែក ដែលបង្កើត token ស្វ័យប្រវត្តិ។
+
+**ជាមួយ Docker Compose (ងាយបំផុត)** — Dockerfile និង docker-compose.yml បានរៀបចំរួចហើយ:
+```bash
+export BOT_TOKEN="your_telegram_bot_token"
+docker compose up -d
+```
+នេះនឹង start ទាំង `pot-provider` service និង `song-search-bot` service ព្រមគ្នា ភ្ជាប់គ្នាដោយស្វ័យប្រវត្តិ។
+
+**ដោយមិនប្រើ Docker** (ដំណើរការដោយដៃលើ VPS/Termux):
+```bash
+# 1. Run pot provider server (ត្រូវការ Node.js)
+npx bgutil-ytdlp-pot-provider
+
+# 2. កំណត់ URL ឲ្យ bot ដឹង (default port 4416)
+export POT_PROVIDER_URL="http://127.0.0.1:4416"
+
+# 3. Run bot
+export BOT_TOKEN="..."
+python bot.py
+```
+
+**Deploy លើ Render**: បង្កើត service ពីរដាច់ពីគ្នា — មួយសម្រាប់ `pot-provider` (Docker image `brainicism/bgutil-ytdlp-pot-provider`), មួយសម្រាប់ bot ខ្លួនឯង ដោយកំណត់ `POT_PROVIDER_URL` ចង្អុលទៅ internal URL របស់ pot-provider service (Render's private networking)។
+
+### វិធីទី២: Cookies ពី browser (ជម្រើសបម្រុង)
+1. ដំឡើង extension "Get cookies.txt LOCALLY" (Chrome/Firefox)
+2. ចូល youtube.com ខណៈ login ស្រាប់ → export ជា `cookies.txt`
+3. Upload ទៅ server ក្បែរ `bot.py` → `export COOKIES_FILE="/path/to/cookies.txt"`
+
+⚠️ cookies.txt មានសិទ្ធិចូល account YouTube — កុំចែករំលែក ឬដាក់ក្នុង public repo។ គួរប្រើ account បន្ទាប់បន្សំ។
+
+*អាចប្រើទាំងពីរវិធីព្រមគ្នាបាន (PO token + cookies) សម្រាប់ភាពស្ថិរភាពខ្ពស់បំផុត។*
+
 ## កំណត់ចំណាំ
 - ចម្រៀងទាញយកជា MP3 192kbps រួចលុបចោលពី server ភ្លាមៗបន្ទាប់ពីផ្ញើ (មិនរក្សាទុកអចិន្ត្រៃយ៍ទេ)
 - លទ្ធផលស្វែងរកនីមួយៗ ចងជាមួយ user ជាបណ្តោះអាសន្ន — ប្រសិនបើផុតកំណត់ត្រូវស្វែងរកម្តងទៀត

@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  pot-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    container_name: pot-provider
+    restart: unless-stopped
+    ports:
+      - "4416:4416"
+
+  song-search-bot:
+    build: .
+    container_name: song-search-bot
+    restart: unless-stopped
+    depends_on:
+      - pot-provider
+    environment:
+      BOT_TOKEN: "${BOT_TOKEN}"
+      POT_PROVIDER_URL: "http://pot-provider:4416"
+    # COOKIES_FILE: "/app/cookies.txt"  # ជម្រើសបន្ថែម បើចង់ប្រើ cookies ជាមួយ PO token

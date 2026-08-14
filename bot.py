@@ -37,6 +37,28 @@ DOWNLOAD_DIR = Path("downloads")
 DOWNLOAD_DIR.mkdir(exist_ok=True)
 MAX_RESULTS = 6  # ចំនួនលទ្ធផលស្វែងរកអតិបរមា
 
+# ផ្លូវទៅ cookies.txt (Netscape format) — ត្រូវការនៅពេល YouTube ស្នើសុំ "Sign in to confirm you're not a bot"
+COOKIES_FILE = os.environ.get("COOKIES_FILE", "").strip() or None
+
+# PO Token provider (bgutil-ytdlp-pot-provider) — ជម្រើសជំនួស cookies
+# ត្រូវរត់ provider server ដាច់ដោយឡែក (Node.js/Docker) — មើល README
+POT_PROVIDER_URL = os.environ.get("POT_PROVIDER_URL", "").strip() or None
+
+
+def _base_ydl_opts() -> dict:
+    extractor_args = {"youtube": {"player_client": ["android", "web"]}}
+    if POT_PROVIDER_URL:
+        extractor_args["youtubepot-bgutilhttp"] = {"base_url": [POT_PROVIDER_URL]}
+
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "extractor_args": extractor_args,
+    }
+    if COOKIES_FILE and Path(COOKIES_FILE).exists():
+        opts["cookiefile"] = COOKIES_FILE
+    return opts
+
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
@@ -52,12 +74,9 @@ search_cache: dict[int, list[dict]] = {}
 # ─────────────────────────────
 def yt_search(query: str, limit: int = MAX_RESULTS) -> list[dict]:
     ydl_opts = {
-        "quiet": True,
-        "no_warnings": True,
+        **_base_ydl_opts(),
         "extract_flat": True,
         "skip_download": True,
-        # ប្រើ prefix ដោយផ្ទាល់ជំនួស default_search — ជៀសផុតបញ្ហាមួយចំនួនក្នុងកំណែ yt-dlp ថ្មីៗ
-        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
     }
     search_query = f"ytsearch{limit}:{query}"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -85,6 +104,7 @@ def yt_search(query: str, limit: int = MAX_RESULTS) -> list[dict]:
 
 def yt_download_mp3(video_url: str, out_path: Path) -> Path:
     ydl_opts = {
+        **_base_ydl_opts(),
         "format": "bestaudio/best",
         "outtmpl": str(out_path / "%(id)s.%(ext)s"),
         "postprocessors": [
@@ -94,8 +114,6 @@ def yt_download_mp3(video_url: str, out_path: Path) -> Path:
                 "preferredquality": "192",
             }
         ],
-        "quiet": True,
-        "no_warnings": True,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(video_url, download=True)
